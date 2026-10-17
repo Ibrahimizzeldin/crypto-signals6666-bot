@@ -5,7 +5,7 @@ import time
 import websockets
 import httpx
 from telegram import Bot
-from telegram.ext import Application
+from aiohttp import web
 
 # من Environment Variables
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
@@ -126,9 +126,26 @@ async def scan_market():
             print(f"Scan error: {e}")
         await asyncio.sleep(60)
 
+# --- دالة الويب لإبقاء الخدمة تعمل على Render ---
+async def handle(request):
+    return web.Response(text="Bot is running 24/7")
+
+async def web_server():
+    app = web.Application()
+    app.router.add_get('/', handle)
+    runner = web.AppRunner(app)
+    await runner.setup()
+    port = int(os.environ.get("PORT", 8080))
+    site = web.TCPSite(runner, '0.0.0.0', port)
+    await site.start()
+    print(f"Web server started on port {port}")
+
 async def main():
     print("Starting bot...")
+    # تشغيل البوت وخادم الويب في نفس الوقت
     asyncio.create_task(scan_market())
+    asyncio.create_task(web_server())
+    
     while True:
         await asyncio.sleep(3600)
 
